@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum GameStatus {
+  INPROGRESS @map("inprogress")
+  COMPLETED  @map("completed")
+
+  @@map("game_status")
+}
+
+enum AnsweringTeam {
+  TEAM1 @map("team1")
+  TEAM2 @map("team2")
+
+  @@map("answering_team")
+}
+
+model Game {
+  id             String         @id @default(uuid()) @db.Uuid
+  hostId         String         @map("host_id")
+  team1Name      String         @map("team1_name")
+  team1Score     Int            @default(0) @map("team1_score")
+  team2Name      String         @map("team2_name")
+  team2Score     Int            @default(0) @map("team2_score")
+  status         GameStatus     @default(INPROGRESS)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  gameCategories GameCategory[]
+
+  @@map("games")
+}
+
+model Category {
+  id             String         @id @default(uuid()) @db.Uuid
+  name           String         @unique
+  imageUrl       String?        @map("image_url")
+  description    String?
+  gameCategories GameCategory[]
+  questions      Question[]
+
+  @@map("categories")
+}
+
+model GameCategory {
+  id            String        @id @default(uuid()) @db.Uuid
+  gameId        String        @db.Uuid @map("game_id")
+  categoryId    String        @db.Uuid @map("category_id")
+  game          Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  category      Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  gameQuestions GameQuestion[]
+
+  @@unique([gameId, categoryId])
+  @@map("game_categories")
+}
+
+model Question {
+  id                String      @id @default(uuid()) @db.Uuid
+  categoryId        String      @db.Uuid @map("category_id")
+  difficulty        Int
+  questionText      String      @map("question_text")
+  questionMediaMeta Json?       @map("question_media_meta")
+  answerText        String      @map("answer_text")
+  answerMediaMeta   Json?       @map("answer_media_meta")
+  category          Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  gameQuestions     GameQuestion[]
+
+  @@map("questions")
+}
+
+model GameQuestion {
+  id               String         @id @default(uuid()) @db.Uuid
+  gameCategoryId   String         @db.Uuid @map("game_category_id")
+  questionId       String         @db.Uuid @map("question_id")
+  picked           Boolean        @default(false)
+  answered         Boolean        @default(false)
+  answeringTeam    AnsweringTeam? @map("answering_team")
+  answeredAt       DateTime?      @map("answered_at")
+  gameCategory     GameCategory   @relation(fields: [gameCategoryId],references: [id],onDelete: Cascade)
+  question         Question       @relation(fields: [questionId],references: [id],onDelete: Cascade)
+
+  @@unique([gameCategoryId, questionId])
+  @@map("game_questions")
+}
